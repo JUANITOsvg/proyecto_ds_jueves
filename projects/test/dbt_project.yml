@@ -1,0 +1,22 @@
+name: 'test'
+version: '1.0'
+config-version: 2
+
+# Folder where models are stored
+model-paths: ["models"]
+
+# Folder for tests
+test-paths: ["tests"]
+
+# Folder for snapshots
+snapshot-paths: ["snapshots"]
+
+# Folder for seeds
+seed-paths: ["seeds"]
+
+profile: 'warehouse_profile'
+
+# Default configs for all models
+models:
+  my_project:
+    +materialized: table

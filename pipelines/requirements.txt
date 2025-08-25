@@ -1,0 +1,7 @@
+apache-airflow-providers-standard
+apache-airflow-providers-postgres>=5.13.1
+apache-airflow-providers-fab
+pandas
+sqlalchemy
+psycopg2-binary
+dbt-postgres>=1.7

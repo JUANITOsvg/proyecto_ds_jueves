@@ -1,0 +1,73 @@
+services:
+
+  postgres:
+    image: postgres:15
+    container_name: warehouse_postgres
+    env_file: .env
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin} -d ${POSTGRES_DB:-warehouse}"]
+      interval: 10s
+      retries: 5
+      
+  airflow:
+    build: ./pipelines
+    container_name: warehouse_airflow
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+      DBT_PROFILES_DIR: /opt/airflow/projects/test
+    volumes:
+      - ./pipelines/dags:/opt/airflow/dags
+      - ./pipelines/scripts:/opt/airflow/scripts
+      - ./projects:/opt/airflow/projects
+    ports:
+      - "8080:8080"
+    entrypoint: >
+      bash -lc "
+        sleep 10;
+        set -euo pipefail;
+        airflow db migrate;
+        airflow users create --username ${AIRFLOW_ADMIN_USER:-admin} --firstname Admin --lastname User --role Admin --email admin@example.com --password ${AIRFLOW_ADMIN_PASSWORD:-admin} || true;
+        airflow dag-processor &
+        airflow scheduler &
+        exec airflow api-server --port 8080
+      "
+
+  superset:
+    image: apache/superset:5.0.0
+    container_name: warehouse_superset
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8088:8088"
+    volumes:
+      - ./superset_config.py:/app/superset_config.py
+    environment:
+      - SUPERSET_CONFIG_PATH=/app/superset_config.py
+    entrypoint: >
+      /bin/sh -c "
+        sleep 10;
+        superset db upgrade &&
+        superset fab create-admin \
+          --username ${SUPERSET_ADMIN_USER:-admin} \
+          --password ${SUPERSET_ADMIN_PASSWORD:-admin} \
+          --firstname f --lastname l --email admin@example.com || true &&
+        superset init &&
+        exec superset run -h 0.0.0.0 -p 8088
+      "
+
+
+volumes:
+  postgres_data:
