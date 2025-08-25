@@ -1,22 +1,20 @@
-Claro, te armo un README más directo y al punto, con tono más informal y sin tanto tecnicismo. Lo podés pegar tal cual en tu repo.
-
----
-
 # Proyecto de Pipelines con Airflow y dbt
+
+**IMPORTANTE: EL .env LO SUBI PARA QUE SEA MAS CONVENIENTE PARA TODOS, PERO NUNCA SUBAN UN .env**
 
 ## 🛠 Arrancar el Proyecto
 
 1. **Cloná el repo:**
 
    ```bash
-   git clone https://tu-repo.git
-   cd tu-repo
+   git clone git@github.com:JUANITOsvg/proyecto_ds_jueves.git
+   cd nose que, pero pone ls en bash
    ```
 
 2. **Levantá todo con Docker Compose:**
 
    ```bash
-   docker-compose up --build
+   docker-compose up -d # para modo detached, pero se puede en la consola misma para ver logs
    ```
 
    Esto va a levantar:
@@ -31,7 +29,7 @@ Claro, te armo un README más directo y al punto, con tono más informal y sin t
    * Airflow: [http://localhost:8080](http://localhost:8080)
    * Superset: [http://localhost:8088](http://localhost:8088)
 
-   Credenciales por defecto:
+   Credenciales por defecto (en el .env que subí, lo subi pq no tiene nada muy loco):
 
    * Usuario: `admin`
    * Contraseña: `admin`
@@ -92,4 +90,5 @@ Claro, te armo un README más directo y al punto, con tono más informal y sin t
 
 ## Comandos utiles
 
-   * Ver data en el whs: docker exec -it warehouse_postgres psql -U admin warehouse
+   * Ver data en el whs: docker exec -it warehouse_postgres psql -U ${POSTGRES_USER:-admin} -d ${POSTGRES_DB:-warehouse}
+
