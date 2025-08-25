@@ -1,6 +1,6 @@
 # Proyecto de Pipelines con Airflow y dbt
 
-**IMPORTANTE: EL .env LO SUBI PARA QUE SEA MAS CONVENIENTE PARA TODOS, PERO NUNCA SUBAN UN .env**
+**!!IMPORTANTE: EL .env LO SUBI PARA QUE SEA MAS CONVENIENTE PARA TODOS, PERO NUNCA SUBAN UN .env!!**
 
 ## 🛠 Arrancar el Proyecto
 
