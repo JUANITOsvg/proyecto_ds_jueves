@@ -22,11 +22,11 @@ def connect_to_db() -> Optional[psycopg2.extensions.connection]:
     try:
         # Setup with psycopg2
         conn = psycopg2.connect(
-            dbname=dotenv.get_key(".env", "POSTGRES_DB") or "warehouse",
-            user=dotenv.get_key(".env", "POSTGRES_USER") or "admin", 
-            password=dotenv.get_key(".env", "POSTGRES_PASSWORD") or "admin",
-            port=dotenv.get_key(".env", "POSTGRES_PORT") or "5432",
-            host=dotenv.get_key(".env", "DB_HOST") or "localhost",
+            dbname=dotenv.get_key("/opt/airflow/.env", "POSTGRES_DB") or "warehouse",
+            user=dotenv.get_key("/opt/airflow/.env", "POSTGRES_USER") or "admin", 
+            password=dotenv.get_key("/opt/airflow/.env", "POSTGRES_PASSWORD") or "admin",
+            port=dotenv.get_key("/opt/airflow/.env", "POSTGRES_PORT") or "5432",
+            host=dotenv.get_key("/opt/airflow/.env", "DB_HOST") or "postgres",
         )
         
         # Set autocommit to False for transaction control
@@ -196,11 +196,11 @@ def insert_dataframe(conn: psycopg2.extensions.connection, table_name: str,
         import os
         
         # Create SQLAlchemy engine from environment variables
-        db_url = f"postgresql://{dotenv.get_key('.env', 'POSTGRES_USER') or 'admin'}:" \
-                f"{dotenv.get_key('.env', 'POSTGRES_PASSWORD') or 'admin'}@" \
-                f"{dotenv.get_key('.env', 'DB_HOST') or 'localhost'}:" \
-                f"{dotenv.get_key('.env', 'POSTGRES_PORT') or '5432'}/" \
-                f"{dotenv.get_key('.env', 'POSTGRES_DB') or 'warehouse'}"
+        db_url = f"postgresql://{dotenv.get_key('/opt/airflow/.env', 'POSTGRES_USER') or 'admin'}:" \
+                f"{dotenv.get_key('/opt/airflow/.env', 'POSTGRES_PASSWORD') or 'admin'}@" \
+                f"{dotenv.get_key('/opt/airflow/.env', 'DB_HOST') or 'postgres'}:" \
+                f"{dotenv.get_key('/opt/airflow/.env', 'POSTGRES_PORT') or '5432'}/" \
+                f"{dotenv.get_key('/opt/airflow/.env', 'POSTGRES_DB') or 'warehouse'}"
         
         engine = create_engine(db_url)
         
@@ -228,11 +228,11 @@ def select_to_dataframe(conn: psycopg2.extensions.connection, query: str) -> Opt
         from sqlalchemy import create_engine
         
         # Create SQLAlchemy engine from environment variables
-        db_url = f"postgresql://{dotenv.get_key('.env', 'POSTGRES_USER') or 'admin'}:" \
-                f"{dotenv.get_key('.env', 'POSTGRES_PASSWORD') or 'admin'}@" \
-                f"{dotenv.get_key('.env', 'DB_HOST') or 'localhost'}:" \
-                f"{dotenv.get_key('.env', 'POSTGRES_PORT') or '5432'}/" \
-                f"{dotenv.get_key('.env', 'POSTGRES_DB') or 'warehouse'}"
+        db_url = f"postgresql://{dotenv.get_key('/opt/airflow/.env', 'POSTGRES_USER') or 'admin'}:" \
+                f"{dotenv.get_key('/opt/airflow/.env', 'POSTGRES_PASSWORD') or 'admin'}@" \
+                f"{dotenv.get_key('/opt/airflow/.env', 'DB_HOST') or 'postgres'}:" \
+                f"{dotenv.get_key('/opt/airflow/.env', 'POSTGRES_PORT') or '5432'}/" \
+                f"{dotenv.get_key('/opt/airflow/.env', 'POSTGRES_DB') or 'warehouse'}"
         
         engine = create_engine(db_url)
         
