@@ -2,7 +2,7 @@ services:
   # PostgreSQL Data Warehouse
   postgres:
     image: postgres:15-alpine
-    container_name: f1_data_warehouse
+    container_name: warehouse
     restart: unless-stopped
     env_file:
       - .env
@@ -16,6 +16,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./pipelines/data:/data:ro
+      - ./pipelines/core/airflow_init.sql:/docker-entrypoint-initdb.d/airflow_init.sql:ro
     networks:
       - data_network
     healthcheck:
@@ -24,6 +25,24 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+
+  airflow:
+    container_name: airflow
+    image: apache/airflow:3.0.0
+    ports:
+      - "8080:8080"
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow_db
+    volumes:
+        - ./pipelines/dags:/opt/airflow/dags
+        - ./pipelines/scripts:/opt/airflow/scripts
+
+    depends_on:
+      - postgres
+    networks:
+      - data_network
+    command: >
+      bash -c "airflow db migrate && airflow standalone"
 
 volumes:
   postgres_data:
