@@ -138,17 +138,12 @@ def save_model(model, label_encoders, feature_columns):
         'feature_columns': feature_columns
     }
     
-    # Save to multiple locations for flexibility
-    model_paths = [
-        models_dir / "f1_race_prediction_model.pkl",
-        Path(__file__).parent.parent / "pipelines" / "apis" / "f1_race_prediction_model.pkl"
-    ]
+    # Save to models directory
+    model_path = models_dir / "f1_race_prediction_model.pkl"
     
-    for model_path in model_paths:
-        model_path.parent.mkdir(exist_ok=True)
-        with open(model_path, 'wb') as f:
-            pickle.dump(model_package, f)
-        print(f"✅ Model saved to: {model_path}")
+    with open(model_path, 'wb') as f:
+        pickle.dump(model_package, f)
+    print(f"✅ Model saved to: {model_path}")
 
 def main():
     """Main function to build the model"""

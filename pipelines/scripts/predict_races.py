@@ -10,8 +10,8 @@ import sys
 from datetime import datetime
 import logging
 
-# Add the APIs directory to the path for database connections
-sys.path.append('/opt/airflow/apis')
+# Add the modules directory to the path for database connections
+sys.path.append('/opt/airflow/modules')
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -87,7 +87,7 @@ def final_table(ti=None):
     logger.info("Starting final table creation...")
     
     try:
-        # Import database connection
+        # Import database connection from modules
         from db_conn_manager import DatabaseManager
         
         # Get processed data from prediction task via XCom (modern way)

@@ -94,13 +94,6 @@ class RacePredictionResponse(BaseModel):
     input_features: dict
     warnings: Optional[list] = None
 
-class ModelInfoResponse(BaseModel):
-    model_name: str
-    features: list
-    model_type: str
-    test_mae: float
-    status: str
-
 @app.get("/")
 async def root():
     """API root endpoint"""
@@ -108,7 +101,7 @@ async def root():
         "message": "F1 Race Position Prediction API",
         "model_loaded": model is not None,
         "model": model_name if model else "No model loaded",
-        "endpoints": ["/health", "/predict", "/model-info", "/docs"]
+        "endpoints": ["/health", "/predict", "/docs"]
     }
 
 @app.get("/health")
@@ -202,26 +195,6 @@ async def predict_race_position(request: RacePredictionRequest):
             status_code=400, 
             detail=f"Prediction error: {str(e)}"
         )
-
-@app.get("/model-info", response_model=ModelInfoResponse)
-async def model_info():
-    """Get information about the loaded model"""
-    
-    if model is None:
-        raise HTTPException(
-            status_code=500, 
-            detail="Model not loaded"
-        )
-    
-    test_mae = model_package.get("model_metrics", {}).get("test_mae", 0.0)
-    
-    return ModelInfoResponse(
-        model_name=model_name,
-        features=feature_columns,
-        model_type=str(type(model).__name__),
-        test_mae=round(test_mae, 3),
-        status="loaded"
-    )
 
 @app.post("/reload-model")
 async def reload_model():

@@ -36,7 +36,7 @@ services:
     volumes:
         - ./pipelines/dags:/opt/airflow/dags
         - ./pipelines/scripts:/opt/airflow/scripts
-        - ./pipelines/apis:/opt/airflow/apis
+        - ./pipelines/modules:/opt/airflow/modules
         - ./pipelines/data:/opt/airflow/data
         - ./.env:/opt/airflow/.env
 
@@ -50,7 +50,7 @@ services:
   # F1 Race Prediction API
   f1-prediction-api:
     build:
-      context: ./pipelines
+      context: .
       dockerfile: apis/Dockerfile
     container_name: f1-prediction-api
     restart: unless-stopped
