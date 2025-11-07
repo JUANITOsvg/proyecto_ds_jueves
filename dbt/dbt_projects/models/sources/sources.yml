@@ -1,0 +1,13 @@
+version: 2
+
+sources:
+  - name: transformed_race_data
+    columns:
+      - driverId    
+      - avg_race_pos    
+      - avg_sprint_pos    
+      - avg_lap_time    
+      - points    
+      - avg_qual_pos    
+      - forename    
+      - surname

@@ -19,7 +19,7 @@ COPY apis/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the API code and model file
-COPY apis/f1_prediction_api.py .
+COPY apis/f1_prediction_api/f1_prediction_api.py .
 COPY models/f1_race_prediction_model.pkl .
 
 # Create models directory for volume mount

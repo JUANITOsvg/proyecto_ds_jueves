@@ -68,7 +68,7 @@ services:
   f1-prediction-api:
     build:
       context: .
-      dockerfile: apis/Dockerfile
+      dockerfile: apis/f1_prediction_api/Dockerfile
     container_name: f1-prediction-api
     restart: unless-stopped
     ports:
@@ -85,7 +85,7 @@ services:
       start_period: 10s
     depends_on:
       - postgres
-
+      
 volumes:
   postgres_data:
     driver: local
