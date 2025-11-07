@@ -1,8 +1,8 @@
 services:
-  # PostgreSQL Data Warehouse
+  # === WAREHOUSE ===
   postgres:
-    image: postgres:15-alpine
     container_name: warehouse
+    image: postgres:15-alpine
     restart: unless-stopped
     env_file:
       - .env
@@ -26,6 +26,7 @@ services:
       retries: 5
       start_period: 30s
 
+  # === ORCHESTRATION ===
   airflow:
     container_name: airflow
     image: apache/airflow:3.0.0
@@ -47,7 +48,23 @@ services:
     command: >
       bash -c "airflow db migrate && airflow standalone"
 
-  # F1 Race Prediction API
+  # === DATA TRANSFORMATION ===
+  dbt:
+    container_name: dbt
+    image: ghcr.io/dbt-labs/dbt-postgres:1.9.latest
+    volumes:
+      - ./dbt/dbt_projects:/usr/app
+      - ./dbt:/root/.dbt
+    working_dir: /usr/app
+    environment:
+      DBT_PROFILES_DIR: "/root/.dbt"
+    depends_on:
+      - postgres
+    networks:
+      - data_network
+    command: run
+
+  # === APIS ===
   f1-prediction-api:
     build:
       context: .
