@@ -58,20 +58,12 @@ load_model()
 
 # Pydantic models for request/response
 class PositionPredictionRequest(BaseModel):
-	year: int
-	month: int
-	round: int
-	grid: int
-	qualifying_position: Optional[int] = 20
-	circuit_name: str
-	driver_surname: str
-	constructor_name: str
-	avg_race_pos: float = 0
-	avg_sprint_pos: float = 0
-	avg_lap_time: float = 0
-	points: float = 0
-	avg_qual_pos: float = 0
-	driver_encoded: int = 0
+	avg_race_pos: float
+	avg_sprint_pos: float
+	avg_lap_time: float
+	points: float
+	avg_qual_pos: float
+	driver_encoded: int
 
 	class Config:
 		schema_extra = {
@@ -119,26 +111,13 @@ async def predict_position(request: PositionPredictionRequest):
 	if model is None:
 		raise HTTPException(status_code=500, detail="Model not loaded. Please ensure the model file is available.")
 	try:
-		# Prepare input data matching the model's expected features
-		input_data = pd.DataFrame([{**request.dict()}])
-		# Map API field names to model feature names if needed
-		if "circuit_name" in input_data:
-			input_data["name"] = input_data.pop("circuit_name")
-		if "driver_surname" in input_data:
-			input_data["surname"] = input_data.pop("driver_surname")
-		if "constructor_name" in input_data:
-			input_data["name_constructor"] = input_data.pop("constructor_name")
+		# Only use the required features for the model
+		req_dict = request.dict()
+		# Ensure all required columns are present and in the correct order
+		input_data = pd.DataFrame([{col: req_dict.get(col, 0) for col in feature_columns}])
 		warnings = []
-		# Encode categorical variables
-		if driver_encoder and "surname" in input_data:
-			try:
-				input_data["driver_encoded"] = driver_encoder.transform(input_data["surname"].astype(str))
-			except Exception:
-				warnings.append(f"Unknown driver_surname: {request.driver_surname}, using default")
-				input_data["driver_encoded"] = 0
-		# Guarantee all model-required columns exist, fill missing with 0
-		input_data = input_data.reindex(columns=feature_columns, fill_value=0)
-		input_data = input_data.fillna(0)
+		print("Input columns for prediction:", list(input_data.columns))
+		print("Input row:", input_data.iloc[0].to_dict())
 		pred = model.predict(input_data)[0]
 		predicted_position = max(1, min(20, round(pred)))
 		return PositionPredictionResponse(
@@ -148,6 +127,7 @@ async def predict_position(request: PositionPredictionRequest):
 			warnings=warnings if warnings else None
 		)
 	except Exception as e:
+		print("Prediction error:", str(e))
 		raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
 
 @app.post("/reload-model")
