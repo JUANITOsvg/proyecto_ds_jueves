@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import sys
 
 sys.path.append('/opt/airflow/scripts')
-# from predict_results import data_extraction, prediction, final_table
+from predict_results import data_extraction, prediction, load_transformed_race_data, load_predicted_race_data
 
 default_args = {
     "description": "DAG for orchestrating predicted race positions",
@@ -19,20 +19,24 @@ dag = DAG(
 )
 
 with dag:
-    
-    # setup = PythonOperator(
-    #     task_id="data_extraction",
-    #     python_callable=data_extraction,
-    # )
+    setup = PythonOperator(
+        task_id="data_extraction",
+        python_callable=data_extraction,
+    )
 
-    # prediction = PythonOperator(
-    #     task_id="prediction",
-    #     python_callable=prediction,
-    # )
+    predict = PythonOperator(
+        task_id="prediction",
+        python_callable=prediction,
+    )
 
-    # results = PythonOperator(
-    #     task_id="final_table",
-    #     python_callable=final_table,
-    # )
+    load_inputs = PythonOperator(
+        task_id="load_transformed_race_data",
+        python_callable=load_transformed_race_data,
+    )
 
-    setup >> prediction >> results
+    load_outputs = PythonOperator(
+        task_id="load_predicted_race_data",
+        python_callable=load_predicted_race_data,
+    )
+
+    setup >> predict >> load_inputs >> load_outputs
