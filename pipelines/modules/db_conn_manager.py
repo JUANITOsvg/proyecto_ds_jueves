@@ -10,39 +10,35 @@ logger = logging.getLogger(__name__)
 
 # CONNECTION SETUP
 
-def connect_to_db(dbname: Optional[str] = None) -> Optional[psycopg2.extensions.connection]:
+def connect_to_db(dbname: Optional[str] = None, schema: Optional[str] = None) -> Optional[psycopg2.extensions.connection]:
     """
-    Establish connection to PostgreSQL database using environment variables or user-specified DB.
-
-    Args:
-        dbname (str, optional): Name of the database to connect to. 
-                                Defaults to value in .env or 'warehouse'.
-
-    Returns:
-        psycopg2.extensions.connection: Database connection object or None if failed.
+    Establish connection to PostgreSQL database using environment variables,
+    with optional database and schema selection.
     """
-    logger.info(f"Connecting to the database...")
+    logger.info(f"Connecting to database '{dbname or 'warehouse'}' (schema={schema or 'default'})...")
 
     try:
-        # Read default values from environment
-        env_path = "/opt/airflow/.env"
-        dbname_env = dotenv.get_key(env_path, "POSTGRES_DB") or "warehouse"
-        dbname_final = dbname or dbname_env  # user input overrides env var
-
         conn = psycopg2.connect(
-            dbname=dbname_final,
-            user=dotenv.get_key(env_path, "POSTGRES_USER") or "admin",
-            password=dotenv.get_key(env_path, "POSTGRES_PASSWORD") or "admin",
-            port=dotenv.get_key(env_path, "POSTGRES_PORT") or "5432",
-            host=dotenv.get_key(env_path, "DB_HOST") or "postgres",
+            dbname=dbname or dotenv.get_key("/opt/airflow/.env", "POSTGRES_DB") or "warehouse",
+            user=dotenv.get_key("/opt/airflow/.env", "POSTGRES_USER") or "admin", 
+            password=dotenv.get_key("/opt/airflow/.env", "POSTGRES_PASSWORD") or "admin",
+            port=dotenv.get_key("/opt/airflow/.env", "POSTGRES_PORT") or "5432",
+            host=dotenv.get_key("/opt/airflow/.env", "DB_HOST") or "postgres",
         )
 
+        # Optionally set schema search path
+        if schema:
+            with conn.cursor() as cur:
+                cur.execute(f"SET search_path TO {schema}, public;")
+                conn.commit()
+                logger.info(f"Schema search_path set to '{schema}'")
+
         conn.autocommit = False
-        logger.info(f"Connected successfully to database '{dbname_final}'.")
+        logger.info("Connection successful.")
         return conn
 
     except psycopg2.Error as e:
-        logger.error(f"Error connecting to the database '{dbname or 'warehouse'}': {e}")
+        logger.error(f"Error connecting to the database: {e}")
         return None
 
 def close_connection(conn: psycopg2.extensions.connection) -> None:
@@ -537,33 +533,26 @@ def get_table_count(conn: psycopg2.extensions.connection, table_name: str) -> Op
 class DatabaseManager:
     """
     Context manager for safe database operations with automatic connection management.
-    
-    Usage:
-        with DatabaseManager() as db:
-            db.insert_data('my_table', {'col1': 'value1', 'col2': 'value2'})
-        
-        or to connect to a specific database:
-            with DatabaseManager(dbname='dev') as db:
-                db.select_data('my_table')
     """
-    
-    def __init__(self, dbname: Optional[str] = None):
+
+    def __init__(self, dbname: Optional[str] = None, schema: Optional[str] = None):
         """
-        Initialize DatabaseManager.
-        
+        Initialize DatabaseManager with optional schema.
+
         Args:
-            dbname (str, optional): Name of the database to connect to. 
-                                    If None, defaults to .env POSTGRES_DB or 'warehouse'.
+            dbname (str, optional): Database name (default from .env or 'warehouse')
+            schema (str, optional): Schema name (e.g., 'dev', 'warehouse')
         """
         self.conn = None
         self.dbname = dbname
-    
+        self.schema = schema
+
     def __enter__(self):
-        self.conn = connect_to_db(self.dbname)
+        self.conn = connect_to_db(self.dbname, self.schema)
         if self.conn is None:
             raise ConnectionError(f"Failed to connect to database '{self.dbname or 'warehouse'}'")
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.conn:
             if exc_type is not None:

@@ -100,7 +100,7 @@ def load_transformed_race_data(ti=None):
 			'forename': str,
 			'surname': str
 		})
-		with DatabaseManager() as db:
+		with DatabaseManager(schema="dev") as db:
 			table_name = 'transformed_race_data'
 			db.insert_bulk_data(table_name, df.to_dict('records'))
 			logger.info(f"Inserted {len(df)} rows into {table_name}")
@@ -153,7 +153,7 @@ def load_predicted_race_data(ti=None):
 			'win_probability': float
 		})
 		df = df[columns].copy()
-		with DatabaseManager() as db:
+		with DatabaseManager(schema="warehouse") as db:
 			table_name = 'predicted_race_data'
 			db.insert_bulk_data(table_name, df.to_dict('records'))
 			logger.info(f"Inserted {len(df)} rows into {table_name}")

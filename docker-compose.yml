@@ -67,26 +67,26 @@ services:
     command: run
 
   # === APIS ===
-  # f1-prediction-api:
-  #   build:
-  #     context: .
-  #     dockerfile: apis/f1_prediction_api/Dockerfile
-  #   container_name: f1-prediction-api
-  #   restart: unless-stopped
-  #   ports:
-  #     - "8000:8000"
-  #   volumes:
-  #     - ./pipelines/models:/app/models:ro
-  #   networks:
-  #     - data_network
-  #   healthcheck:
-  #     test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 3
-  #     start_period: 10s
-  #   depends_on:
-  #     - postgres
+  f1-prediction-api:
+    build:
+      context: .
+      dockerfile: apis/f1_prediction_api/Dockerfile
+    container_name: f1-prediction-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./pipelines/models:/app/models:ro
+    networks:
+      - data_network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      - postgres
 
   f1-position-result-api:
     build:
