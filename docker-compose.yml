@@ -17,6 +17,8 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./pipelines/data:/data:ro
       - ./pipelines/core/airflow_init.sql:/docker-entrypoint-initdb.d/airflow_init.sql:ro
+      - ./pipelines/core/race_position_init.sql:/docker-entrypoint-initdb.d/race_position_init.sql:ro
+      # WE ADD MORE TABLE INITS HERE
     networks:
       - data_network
     healthcheck:

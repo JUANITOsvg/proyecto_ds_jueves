@@ -1,5 +1,6 @@
 {{
     config(
+        schema='warehouse',
         materialized='table',
         unique_key='id'
     )

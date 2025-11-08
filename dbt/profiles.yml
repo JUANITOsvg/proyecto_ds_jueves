@@ -1,12 +1,13 @@
 dbt_projects:
+  target: dev
   outputs:
     dev:
-      dbname: warehouse
+      type: postgres
       host: postgres
-      pass: admin
+      user: admin
+      password: admin
       port: 5432
+      dbname: warehouse
       schema: dev
       threads: 4
-      type: postgres
-      user: admin
-  target: dev
+      keepalives_idle: 0
