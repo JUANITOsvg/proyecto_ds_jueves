@@ -23,7 +23,7 @@ fi
 
 # Run the model building script
 echo "🏗️  Building F1 race prediction model..."
-python scripts/build_model.py
+python scripts/build_race_prediction.py
 
 # Check if model was created successfully
 if [[ -f "models/f1_race_prediction_model.pkl" ]]; then
