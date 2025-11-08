@@ -36,37 +36,37 @@ def prediction(ti=None):
 		df = pd.DataFrame(input_data)
 		api_url = os.environ.get('F1_PREDICT_API_URL', 'http://f1-position-result-api:8001/predict')
 
-		# If driver_encoded is missing, fill with 0 or a default encoding
-		if 'driver_encoded' not in df.columns:
-			df['driver_encoded'] = 0
+		# Ensure all required columns exist and fill NaN with 0
+		for col in ["avg_race_pos", "avg_sprint_pos", "avg_lap_time", "points", "avg_qual_pos", "forename", "surname"]:
+			if col not in df.columns:
+				df[col] = 0 if col != "forename" and col != "surname" else ""
+		df = df.fillna(0)
 
 		def get_prediction(row):
 			payload = {
-				"avg_race_pos": row["avg_race_pos"],
-				"avg_sprint_pos": row["avg_sprint_pos"],
-				"avg_lap_time": row["avg_lap_time"],
-				"points": row["points"],
-				"avg_qual_pos": row["avg_qual_pos"],
-				"driver_encoded": row["driver_encoded"]
+				"avg_race_pos": float(row["avg_race_pos"]),
+				"avg_sprint_pos": float(row["avg_sprint_pos"]),
+				"avg_lap_time": float(row["avg_lap_time"]),
+				"points": float(row["points"]),
+				"avg_qual_pos": float(row["avg_qual_pos"]),
+				"forename": str(row["forename"]),
+				"surname": str(row["surname"])
 			}
 			try:
 				response = requests.post(api_url, json=payload)
 				response.raise_for_status()
-				# Optionally, get win probability if your API returns it
 				result = response.json()
 				return {
-					"predicted_position": result.get("predicted_position"),
-					"win_probability": result.get("confidence", 0.0)
+					"win_probability": result.get("win_probability", 0.0),
+					"win": result.get("win", False)
 				}
 			except Exception as e:
 				logger.error(f"API error for row {row}: {str(e)}")
-				return {"predicted_position": None, "win_probability": 0.0}
+				return {"win_probability": 0.0, "win": False}
 
 		preds = df.apply(get_prediction, axis=1, result_type='expand')
-		df['predicted_position'] = preds['predicted_position']
 		df['win_probability'] = preds['win_probability']
-		# win = True if predicted_position == 1
-		df['win'] = df['predicted_position'] == 1
+		df['win'] = preds['win']
 		logger.info(f"Predictions added for {len(df)} rows")
 		return df.to_dict('records')
 	except Exception as e:
@@ -123,14 +123,11 @@ def load_predicted_race_data(ti=None):
 		# Only keep required columns and types
 		columns = [
 			'driverId', 'avg_race_pos', 'avg_sprint_pos', 'avg_lap_time', 'points', 'avg_qual_pos',
-			'forename', 'surname', 'driver', 'driver_encoded', 'win', 'win_probability'
+			'forename', 'surname', 'driver', 'win', 'win_probability'
 		]
 		# Add 'driver' column as forename + ' ' + surname if not present
 		if 'driver' not in df.columns:
 			df['driver'] = df['forename'].astype(str) + ' ' + df['surname'].astype(str)
-		# Ensure driver_encoded exists
-		if 'driver_encoded' not in df.columns:
-			df['driver_encoded'] = 0
 		# Ensure win_probability exists
 		if 'win_probability' not in df.columns:
 			df['win_probability'] = 0.0
@@ -148,7 +145,6 @@ def load_predicted_race_data(ti=None):
 			'forename': str,
 			'surname': str,
 			'driver': str,
-			'driver_encoded': int,
 			'win': bool,
 			'win_probability': float
 		})

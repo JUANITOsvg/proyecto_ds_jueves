@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 from typing import Optional
 import os
+import random
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -30,7 +31,7 @@ model_package = None
 def load_model():
 	"""Load the trained model package"""
 	global model, driver_encoder, feature_columns, model_package
-	model_path = "f1_race_prediction_model.pkl"
+	model_path = "f1_race_position_model.pkl"
 	possible_paths = [
 		model_path,
 		f"../models/{model_path}",
@@ -59,35 +60,29 @@ load_model()
 # Pydantic models for request/response
 class PositionPredictionRequest(BaseModel):
 	avg_race_pos: float
-	avg_sprint_pos: float
+	avg_sprint_pos: float = 0.0  # Optional, default 0.0
 	avg_lap_time: float
 	points: float
 	avg_qual_pos: float
-	driver_encoded: int
+	forename: str
+	surname: str
 
 	class Config:
 		schema_extra = {
 			"example": {
-				"year": 2023,
-				"month": 5,
-				"round": 1,
-				"grid": 1,
-				"qualifying_position": 1,
-				"circuit_name": "Monaco",
-				"driver_surname": "Verstappen",
-				"constructor_name": "Red Bull",
-				"avg_race_pos": 1.0,
-				"avg_sprint_pos": 1.0,
-				"avg_lap_time": 80.0,
-				"points": 25.0,
-				"avg_qual_pos": 1.0,
-				"driver_encoded": 0
+				"avg_race_pos": 5.02,
+				"avg_sprint_pos": 6.78,
+				"avg_lap_time": 96.75,
+				"points": 223.0,
+				"avg_qual_pos": 4.07,
+				"forename": "Lewis",
+				"surname": "Hamilton"
 			}
 		}
 
 class PositionPredictionResponse(BaseModel):
-	predicted_position: int
-	confidence: float
+	win_probability: float
+	win: bool
 	input_features: dict
 	warnings: Optional[list] = None
 
@@ -111,18 +106,27 @@ async def predict_position(request: PositionPredictionRequest):
 	if model is None:
 		raise HTTPException(status_code=500, detail="Model not loaded. Please ensure the model file is available.")
 	try:
-		# Only use the required features for the model
 		req_dict = request.dict()
-		# Ensure all required columns are present and in the correct order
+		# Compute driver_encoded from forename and surname
+		driver_name = f"{req_dict['forename']} {req_dict['surname']}"
+		if 'driver_encoded' in feature_columns:
+			if 'driver_encoder' in model_package and model_package['driver_encoder'] is not None:
+				driver_encoded = model_package['driver_encoder'].transform([driver_name])[0]
+			else:
+				raise HTTPException(status_code=500, detail="Driver encoder not found in model package.")
+			req_dict['driver_encoded'] = driver_encoded
+		# Prepare input data for prediction, fill NaN with 0
 		input_data = pd.DataFrame([{col: req_dict.get(col, 0) for col in feature_columns}])
+		input_data = input_data.fillna(0)
 		warnings = []
 		print("Input columns for prediction:", list(input_data.columns))
 		print("Input row:", input_data.iloc[0].to_dict())
-		pred = model.predict(input_data)[0]
-		predicted_position = max(1, min(20, round(pred)))
+		# TEMP: Randomize win_probability for testing
+		win_proba = random.uniform(0, 1)
+		win = win_proba > 0.5
 		return PositionPredictionResponse(
-			predicted_position=predicted_position,
-			confidence=float(pred),
+			win_probability=win_proba,
+			win=win,
 			input_features=input_data.iloc[0].to_dict(),
 			warnings=warnings if warnings else None
 		)
