@@ -10,35 +10,40 @@ logger = logging.getLogger(__name__)
 
 # CONNECTION SETUP
 
-def connect_to_db() -> Optional[psycopg2.extensions.connection]:
+def connect_to_db(dbname: Optional[str] = None) -> Optional[psycopg2.extensions.connection]:
     """
-    Establish connection to PostgreSQL database using environment variables.
-    
+    Establish connection to PostgreSQL database using environment variables or user-specified DB.
+
+    Args:
+        dbname (str, optional): Name of the database to connect to. 
+                                Defaults to value in .env or 'warehouse'.
+
     Returns:
-        psycopg2.extensions.connection: Database connection object or None if failed
+        psycopg2.extensions.connection: Database connection object or None if failed.
     """
-    logger.info("Connecting to the database...")
-    
+    logger.info(f"Connecting to the database...")
+
     try:
-        # Setup with psycopg2
+        # Read default values from environment
+        env_path = "/opt/airflow/.env"
+        dbname_env = dotenv.get_key(env_path, "POSTGRES_DB") or "warehouse"
+        dbname_final = dbname or dbname_env  # user input overrides env var
+
         conn = psycopg2.connect(
-            dbname=dotenv.get_key("/opt/airflow/.env", "POSTGRES_DB") or "warehouse",
-            user=dotenv.get_key("/opt/airflow/.env", "POSTGRES_USER") or "admin", 
-            password=dotenv.get_key("/opt/airflow/.env", "POSTGRES_PASSWORD") or "admin",
-            port=dotenv.get_key("/opt/airflow/.env", "POSTGRES_PORT") or "5432",
-            host=dotenv.get_key("/opt/airflow/.env", "DB_HOST") or "postgres",
+            dbname=dbname_final,
+            user=dotenv.get_key(env_path, "POSTGRES_USER") or "admin",
+            password=dotenv.get_key(env_path, "POSTGRES_PASSWORD") or "admin",
+            port=dotenv.get_key(env_path, "POSTGRES_PORT") or "5432",
+            host=dotenv.get_key(env_path, "DB_HOST") or "postgres",
         )
-        
-        # Set autocommit to False for transaction control
+
         conn.autocommit = False
-        logger.info("Connection successful.")
-        
+        logger.info(f"Connected successfully to database '{dbname_final}'.")
         return conn
 
     except psycopg2.Error as e:
-        logger.error(f"Error connecting to the database: {e}")
+        logger.error(f"Error connecting to the database '{dbname or 'warehouse'}': {e}")
         return None
-
 
 def close_connection(conn: psycopg2.extensions.connection) -> None:
     """
@@ -536,15 +541,27 @@ class DatabaseManager:
     Usage:
         with DatabaseManager() as db:
             db.insert_data('my_table', {'col1': 'value1', 'col2': 'value2'})
+        
+        or to connect to a specific database:
+            with DatabaseManager(dbname='dev') as db:
+                db.select_data('my_table')
     """
     
-    def __init__(self):
+    def __init__(self, dbname: Optional[str] = None):
+        """
+        Initialize DatabaseManager.
+        
+        Args:
+            dbname (str, optional): Name of the database to connect to. 
+                                    If None, defaults to .env POSTGRES_DB or 'warehouse'.
+        """
         self.conn = None
+        self.dbname = dbname
     
     def __enter__(self):
-        self.conn = connect_to_db()
+        self.conn = connect_to_db(self.dbname)
         if self.conn is None:
-            raise ConnectionError("Failed to connect to database")
+            raise ConnectionError(f"Failed to connect to database '{self.dbname or 'warehouse'}'")
         return self
     
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -554,7 +571,8 @@ class DatabaseManager:
                 logger.error("Transaction rolled back due to exception")
             close_connection(self.conn)
     
-    # Delegate methods to use self.conn
+    # --- Delegate methods to underlying connection ---
+    
     def create_table(self, table_name: str, columns: dict) -> bool:
         return create_table(self.conn, table_name, columns)
     
