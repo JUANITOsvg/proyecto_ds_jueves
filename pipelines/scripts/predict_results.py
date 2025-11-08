@@ -36,6 +36,10 @@ def prediction(ti=None):
 		df = pd.DataFrame(input_data)
 		api_url = os.environ.get('F1_PREDICT_API_URL', 'http://f1-position-result-api:8001/predict')
 
+		# If driver_encoded is missing, fill with 0 or a default encoding
+		if 'driver_encoded' not in df.columns:
+			df['driver_encoded'] = 0
+
 		def get_prediction(row):
 			payload = {
 				"avg_race_pos": row["avg_race_pos"],
@@ -48,12 +52,21 @@ def prediction(ti=None):
 			try:
 				response = requests.post(api_url, json=payload)
 				response.raise_for_status()
-				return response.json().get("predicted_position")
+				# Optionally, get win probability if your API returns it
+				result = response.json()
+				return {
+					"predicted_position": result.get("predicted_position"),
+					"win_probability": result.get("confidence", 0.0)
+				}
 			except Exception as e:
 				logger.error(f"API error for row {row}: {str(e)}")
-				return None
+				return {"predicted_position": None, "win_probability": 0.0}
 
-		df['predicted_position'] = df.apply(get_prediction, axis=1)
+		preds = df.apply(get_prediction, axis=1, result_type='expand')
+		df['predicted_position'] = preds['predicted_position']
+		df['win_probability'] = preds['win_probability']
+		# win = True if predicted_position == 1
+		df['win'] = df['predicted_position'] == 1
 		logger.info(f"Predictions added for {len(df)} rows")
 		return df.to_dict('records')
 	except Exception as e:
@@ -71,6 +84,22 @@ def load_transformed_race_data(ti=None):
 		if not input_data:
 			raise ValueError("No input data received from data_extraction task")
 		df = pd.DataFrame(input_data)
+		# Only keep required columns and types
+		columns = [
+			'driverId', 'avg_race_pos', 'avg_sprint_pos', 'avg_lap_time', 'points', 'avg_qual_pos', 'forename', 'surname'
+		]
+		df = df[columns].copy()
+		# Ensure types
+		df = df.astype({
+			'driverId': int,
+			'avg_race_pos': float,
+			'avg_sprint_pos': float,
+			'avg_lap_time': float,
+			'points': float,
+			'avg_qual_pos': float,
+			'forename': str,
+			'surname': str
+		})
 		with DatabaseManager() as db:
 			table_name = 'transformed_race_data'
 			db.insert_bulk_data(table_name, df.to_dict('records'))
@@ -91,6 +120,39 @@ def load_predicted_race_data(ti=None):
 		if not pred_data:
 			raise ValueError("No prediction data received from prediction task")
 		df = pd.DataFrame(pred_data)
+		# Only keep required columns and types
+		columns = [
+			'driverId', 'avg_race_pos', 'avg_sprint_pos', 'avg_lap_time', 'points', 'avg_qual_pos',
+			'forename', 'surname', 'driver', 'driver_encoded', 'win', 'win_probability'
+		]
+		# Add 'driver' column as forename + ' ' + surname if not present
+		if 'driver' not in df.columns:
+			df['driver'] = df['forename'].astype(str) + ' ' + df['surname'].astype(str)
+		# Ensure driver_encoded exists
+		if 'driver_encoded' not in df.columns:
+			df['driver_encoded'] = 0
+		# Ensure win_probability exists
+		if 'win_probability' not in df.columns:
+			df['win_probability'] = 0.0
+		# Ensure win exists
+		if 'win' not in df.columns:
+			df['win'] = df['predicted_position'] == 1
+		# Ensure types
+		df = df.astype({
+			'driverId': int,
+			'avg_race_pos': float,
+			'avg_sprint_pos': float,
+			'avg_lap_time': float,
+			'points': float,
+			'avg_qual_pos': float,
+			'forename': str,
+			'surname': str,
+			'driver': str,
+			'driver_encoded': int,
+			'win': bool,
+			'win_probability': float
+		})
+		df = df[columns].copy()
 		with DatabaseManager() as db:
 			table_name = 'predicted_race_data'
 			db.insert_bulk_data(table_name, df.to_dict('records'))
