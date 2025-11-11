@@ -101,28 +101,36 @@ async def health_check():
 		"model_loaded": model is not None
 	}
 
+
 @app.post("/predict", response_model=PositionPredictionResponse)
 async def predict_position(request: PositionPredictionRequest):
 	if model is None:
 		raise HTTPException(status_code=500, detail="Model not loaded. Please ensure the model file is available.")
 	try:
 		req_dict = request.dict()
-		# Compute driver_encoded from forename and surname
+		warnings = []
+		# Prepare driver_encoded
 		driver_name = f"{req_dict['forename']} {req_dict['surname']}"
 		if 'driver_encoded' in feature_columns:
-			if 'driver_encoder' in model_package and model_package['driver_encoder'] is not None:
-				driver_encoded = model_package['driver_encoder'].transform([driver_name])[0]
+			if driver_encoder is not None:
+				try:
+					driver_encoded = driver_encoder.transform([driver_name])[0]
+				except Exception:
+					driver_encoded = 0
+					warnings.append(f"Unknown driver: {driver_name}, using default encoding 0.")
+				req_dict['driver_encoded'] = driver_encoded
 			else:
 				raise HTTPException(status_code=500, detail="Driver encoder not found in model package.")
-			req_dict['driver_encoded'] = driver_encoded
 		# Prepare input data for prediction, fill NaN with 0
 		input_data = pd.DataFrame([{col: req_dict.get(col, 0) for col in feature_columns}])
 		input_data = input_data.fillna(0)
-		warnings = []
 		print("Input columns for prediction:", list(input_data.columns))
 		print("Input row:", input_data.iloc[0].to_dict())
-		# TEMP: Randomize win_probability for testing
-		win_proba = random.uniform(0, 1)
+		# Use model to predict win probability
+		if hasattr(model, "predict_proba"):
+			win_proba = float(model.predict_proba(input_data)[0][1])
+		else:
+			win_proba = float(model.predict(input_data)[0])
 		win = win_proba > 0.5
 		return PositionPredictionResponse(
 			win_probability=win_proba,
